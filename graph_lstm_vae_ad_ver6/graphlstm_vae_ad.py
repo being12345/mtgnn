@@ -234,7 +234,7 @@ class GraphLSTM_VAE_AD(Algorithm, PyTorchUtils):
         plt.plot(np.array(self.loss_logs[loss_key]), label=loss_key)
         plt.legend()
 
-    def get_time_sequence(self, data, nodes_num, selected_indexes):
+    def get_time_sequence(self, data, nodes_num, selected_indexes=None):
         """
         get time series batch, you can add it to `torch.nn.utils.rnn.pad_sequence`
         :param data: ndarray
