@@ -1,7 +1,6 @@
 from unittest import TestCase
 
-from gcn.NodeDataSet import NodeDataSet
-from util.data import get_data
+from Data.generate_data import generate_data, get_data, get_and_normalize_data
 
 
 class TestNodeDataSet(TestCase):
@@ -10,31 +9,40 @@ class TestNodeDataSet(TestCase):
         TODO: using random number
         :return:
         """
-        self.pred = 0
         self.node_num = 50
-        self.node_dim = 6
-        self.feature, self.latency, self.edge_index = get_data(self.pred, self.node_num, self.node_dim)
+        self.train_loader, self.valid_loader, self.test_loader, self.edge_index = generate_data(self.node_num)
+
+    def test_data_value(self):
+        """
+        TODO: using random number
+        test metrics_num, nodes_num, whether latency is right
+        """
+        df = get_and_normalize_data('./DatasetUpdate/MMS.csv')
+        x, y, edge = get_data(50)
+        print(x[0, :, 0, 0])
+        print(y[0, ])
+        print(df.iloc[0, 0:7])
 
     def test_shape(self):
         """
         TODO: using random number
         test metrics_num, nodes_num, whether latency is right
         """
-        self.assertEqual(6, self.feature.shape[2])  # test node_dim
-        self.assertEqual(50, self.feature.shape[1])  # test node_num
-        self.assertEqual(3216, self.feature.shape[0])  # test time_num
+        for x, y in self.train_loader:
+            self.assertEqual((30, 50, 6), x.shape[1:])  # test node_dim
+            self.assertEqual((30, 50, 1), y.shape[1:])  # test node_num
 
-        self.assertEqual(-0.25043782773339, self.feature[0, 1, 0])  # test time_num
+            assert x[0][0][1, 2] == df.iloc[0, 9]
+            # assert y[0][0][1] == df.iloc[0, 11]
 
-        self.assertEqual(-0.2650067609647671, self.latency[1])
+            break
 
-    # 1. len 2. [] index
-    def test_dataset(self):
-        data = NodeDataSet(self.feature, self.latency)
-        self.assertEqual(len(data), self.feature.shape[0])
-        for x, y in data:
-            print(x.shape)
-            print(y.shape)
+        for x, y in self.valid_loader:
+            self.assertEqual((30, 50, 6), x.shape[1:])  # test node_dim
+            self.assertEqual((30, 50, 1), y.shape[1:])  # test node_num
+            break
 
-
-
+        for x, y in self.test_loader:
+            self.assertEqual((30, 50, 6), x.shape[1:])  # test node_dim
+            self.assertEqual((30, 50, 1), y.shape[1:])  # test node_num
+            break
