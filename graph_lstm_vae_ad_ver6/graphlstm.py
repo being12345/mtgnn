@@ -290,40 +290,43 @@ class GraphLSTM(nn.Module, PyTorchUtils):
         for i in range(0, self.num_layers):
             cur_input_dim = self.input_dim if i == 0 else self.hidden_dim[i - 1]
 
-            if self.kind == 'GCN':
-                cell_list.append(GCNLSTMCell(nodes_num=nodes_num,
-                                             input_dim=cur_input_dim,
-                                             hidden_dim=self.hidden_dim[i],
-                                             bias=self.bias,
-                                             seed=self.seed,
-                                             gpu=self.gpu))
-            elif self.kind == 'GAT':
-                cell_list.append(GATLSTMCell(nodes_num=nodes_num,
-                                             input_dim=cur_input_dim,
-                                             hidden_dim=self.hidden_dim[i],
-                                             head=self.head[i],
-                                             dropout=self.dropout,
-                                             bias=self.bias,
-                                             seed=self.seed,
-                                             gpu=self.gpu))
-            elif self.kind == 'WL1':
-                cell_list.append(WL1LSTMCell(nodes_num=nodes_num,
-                                             input_dim=cur_input_dim,
-                                             hidden_dim=self.hidden_dim[i],
-                                             bias=self.bias,
-                                             seed=self.seed,
-                                             gpu=self.gpu))
-            elif self.kind == 'LIN':
-                cell_list.append(LSTMCell(nodes_num=nodes_num,
-                                          input_dim=cur_input_dim,
-                                          hidden_dim=self.hidden_dim[i],
-                                          bias=self.bias,
-                                          seed=self.seed,
-                                          gpu=self.gpu))
-            else:
-                raise NotImplementedError()
+            self.add_layer(cell_list, cur_input_dim, i, nodes_num)
 
         self.cell_list = nn.ModuleList(cell_list)
+
+    def add_layer(self, cell_list, cur_input_dim, i, nodes_num):
+        if self.kind == 'GCN':
+            cell_list.append(GCNLSTMCell(nodes_num=nodes_num,
+                                         input_dim=cur_input_dim,
+                                         hidden_dim=self.hidden_dim[i],
+                                         bias=self.bias,
+                                         seed=self.seed,
+                                         gpu=self.gpu))
+        elif self.kind == 'GAT':
+            cell_list.append(GATLSTMCell(nodes_num=nodes_num,
+                                         input_dim=cur_input_dim,
+                                         hidden_dim=self.hidden_dim[i],
+                                         head=self.head[i],
+                                         dropout=self.dropout,
+                                         bias=self.bias,
+                                         seed=self.seed,
+                                         gpu=self.gpu))
+        elif self.kind == 'WL1':
+            cell_list.append(WL1LSTMCell(nodes_num=nodes_num,
+                                         input_dim=cur_input_dim,
+                                         hidden_dim=self.hidden_dim[i],
+                                         bias=self.bias,
+                                         seed=self.seed,
+                                         gpu=self.gpu))
+        elif self.kind == 'LIN':
+            cell_list.append(LSTMCell(nodes_num=nodes_num,
+                                      input_dim=cur_input_dim,
+                                      hidden_dim=self.hidden_dim[i],
+                                      bias=self.bias,
+                                      seed=self.seed,
+                                      gpu=self.gpu))
+        else:
+            raise NotImplementedError()
 
     def forward(self, input_tensor, edge_index, hidden_state=None):
         """

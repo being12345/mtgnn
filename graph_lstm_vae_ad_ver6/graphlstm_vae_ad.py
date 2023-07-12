@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from torch.utils.data.sampler import SubsetRandomSampler
 from tqdm import trange, tqdm
 from torch_geometric.nn import GCNConv, GATConv
@@ -42,6 +42,16 @@ class GraphLSTM_VAE_AD(Algorithm, PyTorchUtils):
 
         self.lstmed = None
         # self.sscaler = StandardScaler()
+
+    def get_train_valid_test(self, data, nodes_num: int, selected_indexes=None):
+
+        train_set, valid_set, test_set = random_split(data, [0.6, 0.2, 0.2])
+
+        train_loader = DataLoader(dataset=train_set, batch_size=self.batch_size, drop_last=True, shuffle=True)
+        valid_loader = DataLoader(dataset=valid_set, batch_size=self.batch_size, drop_last=True, shuffle=True)
+        test_loader = DataLoader(dataset=test_set, batch_size=self.batch_size, drop_last=True, shuffle=False)
+
+        return train_loader, valid_loader, test_loader
 
     def fit(self, X: pd.DataFrame, nodes_num: int, edge_index: list, log_step: int = 20, patience: int = 10,
             selected_indexes=None):
@@ -102,24 +112,15 @@ class GraphLSTM_VAE_AD(Algorithm, PyTorchUtils):
                             log += ", {}: {:.4f}".format(tag, value)
                         print(log)
 
-                        plt_ctr = 1
                         if not hasattr(self, "loss_logs"):
                             self.loss_logs = {}
-                            for loss_key in loss:
-                                self.loss_logs[loss_key] = [loss[loss_key]]
-                                plt.subplot(2, 2, plt_ctr)
-                                plt.plot(np.array(self.loss_logs[loss_key]), label=loss_key)
-                                plt.legend()
-                                plt_ctr += 1
+                            for index, loss_key in enumerate(loss):
+                                self.plot_loss(loss, loss_key, index + 1)
                         else:
-                            for loss_key in loss:
-                                self.loss_logs[loss_key].append(loss[loss_key])
-                                plt.subplot(2, 2, plt_ctr)
-                                plt.plot(np.array(self.loss_logs[loss_key]), label=loss_key)
-                                plt.legend()
-                                plt_ctr += 1
+                            for index, loss_key in enumerate(loss):
+                                self.plot_loss(loss, loss_key, index + 1)
                             if 'valid_loss' in self.loss_logs:
-                                plt.subplot(2, 2, plt_ctr)
+                                plt.subplot(2, 2, index + 1)
                                 plt.plot(np.array(self.loss_logs['valid_loss']), label='valid_loss')
                                 plt.legend()
                                 print("valid_loss:", self.loss_logs['valid_loss'])
@@ -226,6 +227,12 @@ class GraphLSTM_VAE_AD(Algorithm, PyTorchUtils):
                         self.lstmed.load_state_dict(
                             torch.load(self.name + '_' + self.kind + str(self.gpu) + '_' + 'checkpoint.pt'))
                         break
+
+    def plot_loss(self, loss, loss_key, position):
+        self.loss_logs[loss_key] = [loss[loss_key]]
+        plt.subplot(2, 2, position)
+        plt.plot(np.array(self.loss_logs[loss_key]), label=loss_key)
+        plt.legend()
 
     def get_time_sequence(self, data, nodes_num, selected_indexes):
         """

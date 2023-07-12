@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
+
 class Algorithm(metaclass=abc.ABCMeta):
     def __init__(self, module_name, name, seed, details=False):
         self.logger = logging.getLogger(module_name)
