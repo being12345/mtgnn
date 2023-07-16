@@ -53,6 +53,6 @@ class RrseCriterion(Criterion):
 
     def _calculate(self, pred, y):
         with torch.no_grad():
-            return RelativeSquaredError(num_outputs=len(y), squared=False).to(self.device)(torch.squeeze(pred).transpose(0, 1),
-                                                                           torch.squeeze(y).transpose(0, 1))
-
+            return RelativeSquaredError(num_outputs=len(y), squared=False).to(self.device)(
+                torch.squeeze(pred).transpose(0, 1),
+                torch.squeeze(y).transpose(0, 1))

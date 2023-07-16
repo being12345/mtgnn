@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -6,8 +6,8 @@ from torch.utils.tensorboard import SummaryWriter
 # set dataclass
 @dataclass
 class LogConfig:
-    train_criterion_set: list = ['MAPE', 'MAE', 'RRSE'],
-    valid_criterion_set: list = ['MAPE', 'MAE', 'RRSE'],
+    train_criterion_set: list = field(default_factory=lambda: ['MAPE', 'MAE', 'RRSE'])
+    valid_criterion_set: list = field(default_factory=lambda: ['MAPE', 'MAE', 'RRSE'])
 
 
 class Log:
@@ -24,13 +24,13 @@ class Log:
 
         for i, info in enumerate(criterion_record):
             print(
-                f"[ Train | {epoch + 1:03d}/{n_epochs:03d} ] {self.train_config[0][i]} = {info:.5f},")
-            self.writer.add_scalar(f'train_{self.train_config[0][i]}', info, epoch)
+                f"[ Train | {epoch + 1:03d}/{n_epochs:03d} ] {self.train_config[i]} = {info:.5f},")
+            self.writer.add_scalar(f'train_{self.train_config[i]}', info, epoch)
 
     def record_valid_info(self, epoch, n_epochs, loss, criterion_record):
         print(f"[ Valid | {epoch + 1:03d}/{n_epochs:03d} ] valid_loss = {loss:.5f},")
 
         for i, info in enumerate(criterion_record):
             print(
-                f"[ Train | {epoch + 1:03d}/{n_epochs:03d} ] {self.valid_config[0][i]} = {info:.5f},")
-            self.writer.add_scalar(f'valid_{self.valid_config[0][i]}', info, epoch)
+                f"[ Train | {epoch + 1:03d}/{n_epochs:03d} ] {self.valid_config[i]} = {info:.5f},")
+            self.writer.add_scalar(f'valid_{self.valid_config[i]}', info, epoch)
