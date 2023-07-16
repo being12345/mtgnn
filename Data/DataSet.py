@@ -8,7 +8,9 @@ class Dataset(Dataset):
     y: Targets, if none, do prediction.
     '''
 
-    def __init__(self, x, y=None):
+    def __init__(self, x, y=None, single_step=True):
+        self.single_step = single_step
+
         if y is None:
             self.y = y
         else:
@@ -19,6 +21,7 @@ class Dataset(Dataset):
         if self.y is None:
             return self.x[idx]
         else:
+            if self.single_step: return self.x[idx], self.y[idx]
             return self.x[idx], self.y[idx]
 
     def __len__(self):

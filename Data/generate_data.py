@@ -1,29 +1,49 @@
 import pickle
+from dataclasses import dataclass, MISSING
 
 import numpy as np
 import pandas as pd
+import torch
 from torch.utils.data import random_split
 from torch_geometric.data import DataLoader
 
 from Data.DataSet import Dataset
 
 
-def get_and_normalize_data(path):
+@dataclass
+class DataConfig:
+    seq_len: int = MISSING
+    num_nodes: int = MISSING
+    batch_size: int = MISSING
+
+
+def get_and_normalize_data(path, is_dropna=False):
+    """
+    'PodLatency(s)' isn't normalized
+    :param is_dropna: if False, use time interpolation
+    :param path:
+    :return:
+    """
     df = pd.read_csv(path, header=[0, 1])
 
-    metrics = df.dropna()
+    metrics = df.drop(['TimeStamp', 'label'], axis=1)
 
-    metrics = metrics.drop(['TimeStamp', 'label'], axis=1)
     metrics.columns.names = ['pod', 'metric']
     tempm = metrics.swaplevel('metric', 'pod', axis=1).stack()
+    latency = tempm['PodLatency(s)']
     tempm = (tempm - tempm.mean()) / (tempm.std())
+    tempm['PodLatency(s)'] = latency
     metrics = tempm.unstack().swaplevel('metric', 'pod', axis=1).stack().unstack()
-    metrics = metrics.dropna()
 
+    if is_dropna:
+        return metrics.drop_na()
+
+    metrics.interpolate(inplace=True)
+    metrics.bfill(inplace=True)
     return metrics
 
 
-def get_time_sequence(data, sequence_len=30, nodes_num=50, selected_indexes=None):
+def get_time_sequence(data, sequence_len, nodes_num, selected_indexes=None):
     """
     get time series batch
     :param data: ndarray
@@ -35,14 +55,14 @@ def get_time_sequence(data, sequence_len=30, nodes_num=50, selected_indexes=None
     """
     if selected_indexes is None:
         sequences = [data[i:i + sequence_len].reshape(sequence_len, nodes_num, -1) for i in
-                     range(data.shape[0] - sequence_len + 1)]
+                     range(data.shape[0] - sequence_len)]
     else:
         sequences = [data[i:i + sequence_len].reshape(sequence_len, nodes_num, -1) for i in
-                     selected_indexes]
+                     range(selected_indexes)]
     return sequences
 
 
-def get_data(nodes_num, table_path='./DatasetUpdate/MMS.csv',
+def get_data(num_nodes, table_path='./DatasetUpdate/MMS.csv',
              edge_path='./DatasetUpdate/MMS_topology.pk'):
     """
     default window size is 30
@@ -63,14 +83,43 @@ def get_data(nodes_num, table_path='./DatasetUpdate/MMS.csv',
     sequences_x = np.array(get_time_sequence(performance))
     sequences_y = np.array(get_time_sequence(latency))
 
-    total_size, sequence_len, num_nodes, node_dim = sequences_x.shape
-
     sequences_x = sequences_x.swapaxes(1, 3)
 
     return sequences_x, sequences_y, edge_index
 
 
-def get_train_valid_test(data, batch_size=32, train_ratio=0.6, valid_ratio=0.2, test_ratio=0.2):
+def get_singel_step_data(seq_len, nodes_num, table_path='./DatasetUpdate/MMS.csv',
+                         edge_path='./DatasetUpdate/MMS_topology.pk'):
+    """
+    default window size is 30
+    :return: x shape: (total_size, in_dim, num_nodes, seq_len))
+    y shape: (batch_size, seq_len, num_nodes, 1)
+    and edge_index(coo)
+    """
+    metrics = get_and_normalize_data(table_path)
+
+    metrics.columns.names = ['instance', 'metrics']
+
+    data = metrics.values
+    latency = metrics.stack('instance')['PodLatency(s)'].to_numpy().reshape((metrics.shape[0], -1))
+
+    with open(edge_path, 'rb') as f:
+        edge_index = pickle.load(f)
+
+    edge = torch.zeros(size=(nodes_num, nodes_num), dtype=torch.int64)
+    for a, b in zip(edge_index[0], edge_index[1]):
+        edge[a, b] = 1
+
+    # generate time series
+    sequences_x = np.array(get_time_sequence(data, seq_len, nodes_num))
+    sequences_y = np.expand_dims(latency[seq_len:], (1, 3))
+
+    sequences_x = sequences_x.swapaxes(1, 3)
+
+    return sequences_x, sequences_y, edge
+
+
+def get_train_valid_test(data, batch_size, train_ratio=0.6, valid_ratio=0.2, test_ratio=0.2):
     train_set, valid_set, test_set = random_split(data, [train_ratio, valid_ratio, test_ratio])
 
     train_loader = DataLoader(dataset=train_set, batch_size=batch_size, drop_last=True, shuffle=True)
@@ -80,9 +129,14 @@ def get_train_valid_test(data, batch_size=32, train_ratio=0.6, valid_ratio=0.2, 
     return train_loader, valid_loader, test_loader
 
 
-def generate_data(nodes_num):
-    x, y, edge_index = get_data(nodes_num)
+def generate_data(seq_len, nodes_num, batch_size, train_ratio=0.6, valid_ratio=0.2, test_ratio=0.2,
+                  is_single_step=True):
+    if is_single_step:
+        x, y, edge_index = get_singel_step_data(seq_len, nodes_num)
+    else:
+        x, y, edge_index = get_data()
+
     data = Dataset(x, y)
-    train_loader, valid_loader, test_loader = get_train_valid_test(data, nodes_num)
+    train_loader, valid_loader, test_loader = get_train_valid_test(data, batch_size)
 
     return train_loader, valid_loader, test_loader, edge_index
