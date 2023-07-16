@@ -32,7 +32,7 @@ def get_and_normalize_data(path, is_dropna=False):
     tempm = metrics.swaplevel('metric', 'pod', axis=1).stack()
     latency = tempm['PodLatency(s)']
     tempm = (tempm - tempm.mean()) / (tempm.std())
-    tempm['PodLatency(s)'] = latency
+    tempm['PodLatency(s)'] = latency * 1000
     metrics = tempm.unstack().swaplevel('metric', 'pod', axis=1).stack().unstack()
 
     if is_dropna:
@@ -92,9 +92,9 @@ def get_singel_step(seq_len, nodes_num, is_latency, table_path,
                     edge_path):
     """
     default window size is 30
-    :return: x shape: (total_size, in_dim, num_nodes, seq_len))
-    y shape: (batch_size, seq_len, num_nodes, 1)
-    and edge_index(coo)
+    :return: x shape: (total_size, seq_len, num_nodes, in_dim))
+    y shape: (batch_size, 1, num_nodes, 1)
+    and edge_index shape: tensor (2, ) int64
     """
     metrics = get_and_normalize_data(table_path)
 
@@ -138,8 +138,8 @@ def get_train_valid_test(data, batch_size, train_ratio, valid_ratio, test_ratio)
 
 
 def generate_data(seq_len, nodes_num, batch_size, train_ratio=0.6, valid_ratio=0.2, test_ratio=0.2,
-                  is_single_step=True, is_latency=False, table_path='../DatasetUpdate/MMS.csv',
-                  edge_path='../DatasetUpdate/MMS_topology.pk'):
+                  is_single_step=True, is_latency=False, table_path='./DatasetUpdate/MMS.csv',
+                  edge_path='./DatasetUpdate/MMS_topology.pk'):
     if is_single_step:
         x, y, edge_index = get_singel_step(seq_len, nodes_num, is_latency, table_path, edge_path)
     else:

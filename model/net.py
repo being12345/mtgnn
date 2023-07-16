@@ -32,6 +32,13 @@ class MtgnnConfig:
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
+@dataclass
+class LineveConf:
+    in_dim: int = MISSING
+    out_dim: int = MISSING
+    device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+
 class Net(nn.Module):
     def __init__(self, netconf):
         super(Net, self).__init__()
@@ -61,3 +68,46 @@ class Net(nn.Module):
         x_transform = self.evolvegcn(x, edge_index).transpose(1, -1)
         y = self.mtgnn(x_transform, edge_index)
         return y
+
+
+class LinearEvolve(nn.Module):
+    def __init__(self, netconf):
+        super(Net, self).__init__()
+        self.netconf = netconf
+
+        self.evolvegcn = EvolveGCNO(self.netconf['in_dim']).to(self.netconf['device'])
+        self.linear = nn.Linear(self.netconf['in_dim'], self.netconf['in_dim'])
+
+    def forward(self, x, edge_index):
+        x_transform = self.evolvegcn(x, edge_index)[:, -1, :, :]
+        y = self.linear(x_transform)
+        return y
+
+
+class Mtgnn(nn.Module):
+    def __init__(self, netconf):
+        super(Net, self).__init__()
+        self.netconf = netconf
+        self.mtgnn = MTGNN(self.netconf['gcn_true'], self.netconf['buildA_true'],
+                           self.netconf['gcn_depth'],
+                           self.netconf['num_nodes'], kernel_set=self.netconf['kernel_set'],
+                           kernel_size=self.netconf['kernel_size'],
+                           dropout=self.netconf['dropout'],
+                           subgraph_size=self.netconf['subgraph_size'],
+                           node_dim=self.netconf['node_dim'],
+                           dilation_exponential=self.netconf['dilation_exponential'],
+                           conv_channels=self.netconf['conv_channels'],
+                           residual_channels=self.netconf['residual_channels'],
+                           skip_channels=self.netconf['skip_channels'],
+                           end_channels=self.netconf['end_channels'],
+                           seq_length=self.netconf['seq_in_len'], in_dim=self.netconf['in_dim'],
+                           out_dim=self.netconf['seq_out_len'],
+                           layers=self.netconf['layers'], propalpha=self.netconf['propalpha'],
+                           tanhalpha=self.netconf['tanhalpha'], layer_norm_affline=False).to(
+            self.netconf['device'])
+
+    def forward(self, x, edge_index):
+        y = self.mtgnn(x, edge_index)
+        return y
+
+

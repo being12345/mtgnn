@@ -23,7 +23,9 @@ class Criterion:
         raise NotImplementedError
 
     def cache(self, pred, y):
-        self.record.append(self._calculate(pred, y).item())
+        result = self._calculate(pred, y).item()
+        self.record.append(result)
+        return result
 
     def calculate_mean(self):
         return sum(self.record) / len(self.record)

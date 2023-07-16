@@ -12,9 +12,9 @@ class TestLog(TestCase):
 
     def test_record_train_info(self):
         for i in range(50):
-            self.Log.record_train_info(i, 50, i ** 2, [i, i + 1, i ** 2])
+            self.Log.epoch_train_info(i, 50, i ** 2, [i, i + 1, i ** 2])
 
     def test_record_valid_info(self):
         for i in range(50):
-            self.Log.record_valid_info(i, 50, i ** 2, [i, i + 1, i ** 2])
+            self.Log.epoch_valid_info(i, 50, i ** 2, [i, i + 1, i ** 2])
 
