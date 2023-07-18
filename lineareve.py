@@ -26,7 +26,7 @@ class Conf:
 
 cs = ConfigStore.instance()
 cs.store(name='conf', node=Conf)
-cs.store(group="netconf", name="lineveConf", node=LineveConf)
+cs.store(group="netconf", name="lineveConf", node=LineveConf(in_dim=6, out_dim=1))
 cs.store(group="logconf", name="logconf", node=LogConfig)
 cs.store(group="modelconf", name="modelconf", node=ModelConfig)
 

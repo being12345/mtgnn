@@ -72,11 +72,11 @@ class Net(nn.Module):
 
 class LinearEvolve(nn.Module):
     def __init__(self, netconf):
-        super(Net, self).__init__()
+        super(LinearEvolve, self).__init__()
         self.netconf = netconf
 
         self.evolvegcn = EvolveGCNO(self.netconf['in_dim']).to(self.netconf['device'])
-        self.linear = nn.Linear(self.netconf['in_dim'], self.netconf['in_dim'])
+        self.linear = nn.Linear(self.netconf['in_dim'], self.netconf['out_dim']).to(self.netconf['device'])
 
     def forward(self, x, edge_index):
         x_transform = self.evolvegcn(x, edge_index)[:, -1, :, :]
@@ -86,7 +86,7 @@ class LinearEvolve(nn.Module):
 
 class Mtgnn(nn.Module):
     def __init__(self, netconf):
-        super(Net, self).__init__()
+        super(Mtgnn, self).__init__()
         self.netconf = netconf
         self.mtgnn = MTGNN(self.netconf['gcn_true'], self.netconf['buildA_true'],
                            self.netconf['gcn_depth'],
@@ -107,7 +107,7 @@ class Mtgnn(nn.Module):
             self.netconf['device'])
 
     def forward(self, x, edge_index):
-        y = self.mtgnn(x, edge_index)
+        y = self.mtgnn(x.transpose(-1, 1), edge_index)
         return y
 
 
