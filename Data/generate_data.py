@@ -26,6 +26,7 @@ def get_and_normalize_data(path, is_dropna=False):
     """
     df = pd.read_csv(path, header=[0, 1])
 
+    label = df['label']
     metrics = df.drop(['TimeStamp', 'label'], axis=1)
 
     metrics.columns.names = ['pod', 'metric']
@@ -40,7 +41,7 @@ def get_and_normalize_data(path, is_dropna=False):
 
     metrics.interpolate(inplace=True)
     metrics.bfill(inplace=True)
-    return metrics
+    return metrics, label.to_numpy()
 
 
 def get_time_sequence(data, sequence_len, nodes_num, selected_indexes=None):
@@ -62,7 +63,7 @@ def get_time_sequence(data, sequence_len, nodes_num, selected_indexes=None):
     return sequences
 
 
-def get_data(num_nodes, table_path='./DatasetUpdate/MMS.csv',
+def get_data(table_path='./DatasetUpdate/MMS.csv',
              edge_path='./DatasetUpdate/MMS_topology.pk'):
     """
     default window size is 30
@@ -96,7 +97,7 @@ def get_singel_step(seq_len, nodes_num, is_latency, table_path,
     y shape: (batch_size, 1, num_nodes, 1)
     and edge_index shape: tensor (2, ) int64
     """
-    metrics = get_and_normalize_data(table_path)
+    metrics, _ = get_and_normalize_data(table_path)
 
     metrics.columns.names = ['instance', 'metrics']
 
@@ -115,7 +116,28 @@ def get_singel_step(seq_len, nodes_num, is_latency, table_path,
         y = y[:-1]
     sequences_y = np.expand_dims(y, (1, 3))
 
-    # sequences_x = sequences_x.swapaxes(1, 3)
+    return sequences_x, sequences_y, edge
+
+
+def get_cl_step(seq_len, nodes_num, table_path,
+                edge_path):
+    """
+    default window size is 30
+    :return: x shape: (total_size, seq_len, num_nodes, in_dim))
+    y shape: (total_size, seq_len)
+    and edge_index shape: tensor (2, ) int64
+    """
+    metrics, label = get_and_normalize_data(table_path)
+
+    metrics.columns.names = ['instance', 'metrics']
+
+    data = metrics.values
+
+    # generate time series
+    sequences_x = np.array(get_time_sequence(data, seq_len, nodes_num))
+    sequences_y = np.array(get_time_sequence(label, seq_len, 1)).squeeze()
+
+    edge = get_edge_index(edge_path)
 
     return sequences_x, sequences_y, edge
 
@@ -137,13 +159,15 @@ def get_train_valid_test(data, batch_size, train_ratio, valid_ratio, test_ratio)
     return train_loader, valid_loader, test_loader
 
 
-def generate_data(seq_len, nodes_num, batch_size, train_ratio=0.6, valid_ratio=0.2, test_ratio=0.2,
-                  is_single_step=True, is_latency=False, table_path='./DatasetUpdate/MMS.csv',
+def generate_data(seq_len, num_nodes, batch_size, train_ratio=0.6, valid_ratio=0.2, test_ratio=0.2,
+                  is_single_step=False, is_classify=True, is_latency=False, table_path='./DatasetUpdate/MMS.csv',
                   edge_path='./DatasetUpdate/MMS_topology.pk'):
     if is_single_step:
-        x, y, edge_index = get_singel_step(seq_len, nodes_num, is_latency, table_path, edge_path)
-    else:
-        x, y, edge_index = get_data()
+        x, y, edge_index = get_singel_step(seq_len, num_nodes, is_latency, table_path, edge_path)
+    if is_classify:
+        x, y, edge_index = get_cl_step(seq_len, num_nodes, table_path, edge_path)
+
+    print(x.shape, y.shape)
 
     data = Dataset(x, y)
     train_loader, valid_loader, test_loader = get_train_valid_test(data, batch_size, train_ratio, valid_ratio,

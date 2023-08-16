@@ -9,7 +9,7 @@ from torch import nn
 from Data.generate_data import generate_data
 from model.criterions import MapeCriterion, MaeCriterion, RrseCriterion
 from model.log import Log, LogConfig
-from model.model import ModelConfig, Model
+from model.regression_model import ModelConfig, ReModel
 from model.net import Net, MtgnnConfig
 
 defaults = [
@@ -42,7 +42,7 @@ def train(conf):
     optim = torch.optim.Adam(net.parameters())
     log = Log(conf['logconf']['train_criterion_set'], conf['logconf']['valid_criterion_set'])
 
-    model = Model(net, loss, train_criterion_set, valid_criterion_set, optim, log, conf['modelconf'], edge_index)
+    model = ReModel(net, loss, train_criterion_set, valid_criterion_set, optim, log, conf['modelconf'], edge_index)
     model.trainer(train_loader, valid_loader)
 
 

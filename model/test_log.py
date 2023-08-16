@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from model.log import LogConfig, Log
+from regression_model.log import LogConfig, Log
 
 
 # 1. set up Logconfig 2. set record 3 3. loop 50 add scaler

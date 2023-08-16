@@ -20,6 +20,12 @@ class Criterion:
         self.device = device
 
     def _calculate(self, pred, y):
+        """
+        return tensor
+        :param pred:
+        :param y:
+        :return:
+        """
         raise NotImplementedError
 
     def cache(self, pred, y):
@@ -27,8 +33,10 @@ class Criterion:
         self.record.append(result)
         return result
 
-    def calculate_mean(self):
-        return sum(self.record) / len(self.record)
+    def calculate_mean_and_clear(self):
+        result = sum(self.record) / len(self.record)
+        self.record.clear()
+        return result
 
 
 class MapeCriterion(Criterion):
@@ -58,3 +66,13 @@ class RrseCriterion(Criterion):
             return RelativeSquaredError(num_outputs=len(y), squared=False).to(self.device)(
                 torch.squeeze(pred).transpose(0, 1),
                 torch.squeeze(y).transpose(0, 1))
+
+
+class AccCriterion(Criterion):
+    def __init__(self, device):
+        super().__init__(device)
+
+    def _calculate(self, pred, y):
+        with torch.no_grad():
+            _, pred_label = torch.max(pred, 1)
+            return (pred_label == y).sum()

@@ -39,6 +39,12 @@ class LineveConf:
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
+@dataclass
+class ClLineveConf:
+    in_dim: int = MISSING
+    device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+
 class Net(nn.Module):
     def __init__(self, netconf):
         super(Net, self).__init__()
@@ -65,6 +71,12 @@ class Net(nn.Module):
             self.netconf['device'])
 
     def forward(self, x, edge_index):
+        """
+
+        :param x: (batch, seq_len, num_nodes, nodes_dim)
+        :param edge_index:
+        :return: (batch, 1, num_nodes, 1)
+        """
         x_transform = self.evolvegcn(x, edge_index).transpose(1, -1)
         y = self.mtgnn(x_transform, edge_index)
         return y
@@ -79,8 +91,41 @@ class LinearEvolve(nn.Module):
         self.linear = nn.Linear(self.netconf['in_dim'], self.netconf['out_dim']).to(self.netconf['device'])
 
     def forward(self, x, edge_index):
-        x_transform = self.evolvegcn(x, edge_index)[:, -1, :, :]
-        y = self.linear(x_transform)
+        """
+
+        :param x: (batch, seq_len, num_nodes, nodes_dim)
+        :param edge_index:
+        :return:
+        """
+        y = self.evolvegcn(x, edge_index)
+        return y
+
+
+class LinearEvolveClassification(nn.Module):
+    def __init__(self, netconf):
+        super(LinearEvolveClassification, self).__init__()
+        self.netconf = netconf
+
+        self.evolvegcn = EvolveGCNO(self.netconf['in_dim']).to(self.netconf['device'])
+        self.linear = nn.Linear(350, 2)
+        self.activate = nn.ReLU()
+
+    def forward(self, x, edge_index):
+        """
+
+        :param x: (batch, seq_len, num_nodes, nodes_dim) (4202, 168, 50, 7)
+        :param edge_index:
+        :return: (batch, seq_len)
+        """
+        y = self.evolvegcn(x, edge_index)
+        y = self.activate(y)
+
+        print('y', y.shape)
+
+        y = y.reshape(y.shape[0] * y.shape[1], -1)
+
+        y = self.linear(y)
+
         return y
 
 
@@ -109,5 +154,3 @@ class Mtgnn(nn.Module):
     def forward(self, x, edge_index):
         y = self.mtgnn(x.transpose(-1, 1), edge_index)
         return y
-
-

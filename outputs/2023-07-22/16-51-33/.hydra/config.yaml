@@ -1,0 +1,18 @@
+netconf:
+  in_dim: 7
+  device: cpu
+logconf:
+  train_criterion_set:
+  - MAPE
+  - MAE
+  - RRSE
+  valid_criterion_set:
+  - MAPE
+  - MAE
+  - RRSE
+modelconf:
+  device: cpu
+  n_epochs: 30
+  learning_rate: 0.001
+  early_stop: 400
+  save_path: ./models/model_2023-07-22 16:51:33.033659.ckpt
